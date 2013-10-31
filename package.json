@@ -1,0 +1,32 @@
+{
+  "name": "node-express-handlebars",
+  "version": "0.0.0",
+  "description": "Handlebars renderer for express",
+  "main": "handlebars-renderer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tndev/node-express-handlebars.git"
+  },
+  "keywords": [
+    "express",
+    "handlebars"
+  ],
+  "author": "Till Niese",
+  "license": [
+    {
+      "type": "MIT",
+      "url": "http://www.opensource.org/licenses/mit-license.php"
+    }
+  ],
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/tndev/node-express-handlebars/issues"
+  },
+  "dependencies": {
+    "handlebars": "~1.0.12",
+    "when": "~2.5.1"
+  }
+}

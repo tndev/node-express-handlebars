@@ -1,4 +1,4 @@
 node-express-handlebars
 =======================
 
-Handlebars Renderer for Express
+Handlebars renderer for express
