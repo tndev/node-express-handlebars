@@ -158,7 +158,7 @@ Renderer.__express = function(path, opt, cb) {
     content: path
   });
 
-  var promises = this._waitingPromises.slice(0);
+  var promises = Renderer._waitingPromises.slice(0);
   promises.unshift(pTemplates);
 
   when.all(promises).then(function(tpls) {
