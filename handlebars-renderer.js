@@ -1,7 +1,8 @@
 var when = require('when'),
   parallel = require('when/parallel'),
   fs = require('fs'),
-  Handlebars = require('handlebars');
+  Handlebars = require('handlebars'),
+  S = require('string');
 
 function remove(array, value) {
   var index = array.indexOf(value);
@@ -19,9 +20,14 @@ var Renderer = {
 };
 
 
-Renderer.loadPartials = function(filter) {
+Renderer.loadPartials = function(prefix, filter) {
   var glob = require("glob");
   var d = when.defer();
+  
+  if( arguments.length == 1 ) {
+    filter = prefix;
+    prefix = "";
+  }
 
   this._waitingPromises.push(d.promise);
 
@@ -31,13 +37,12 @@ Renderer.loadPartials = function(filter) {
       var partialList = [];
       helpers.forEach((function(helper) {
         var match = helper.match(/\/([^\/]*)\.mustache$/);
-        partialList.push(this.loadPartial(helper, match[1]));
+        partialList.push(this.loadPartial(helper, S(match[1]).camelize().s,prefix));
       }).bind(this));
 
       when.all(partialList).then(function() {
         d.resolve();
       });
-
 
     }).bind(this));
 
@@ -50,12 +55,12 @@ Renderer.loadPartials = function(filter) {
 };
 
 
-Renderer.loadPartial = function(path, name) {
+Renderer.loadPartial = function(path, name, prefix) {
   //TODO check if partial is already loaded
   var d = when.defer();
   fs.readFile(path, function(err, data) {
     if (err) throw err;
-    Handlebars.registerPartial(name, String(data));
+    Handlebars.registerPartial(prefix + name, String(data));
     d.resolve();
   });
 
@@ -75,7 +80,7 @@ Renderer.loadHelpers = function(filter) {
       var helpersList = [];
       helpers.forEach((function(helper) {
         var match = helper.match(/\/([^\/]*)\.js$/);
-        this.loadHelper(helper, match[1]);
+        this.loadHelper(helper, S(match[1]).camelize().s);
       }).bind(this));
 
       d.resolve();
