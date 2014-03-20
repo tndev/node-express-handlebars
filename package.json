@@ -1,6 +1,6 @@
 {
   "name": "node-express-handlebars",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Handlebars renderer for express",
   "main": "handlebars-renderer.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "handlebars": "~1.x",
-    "when": "~2.x",
+    "when": "~3.x",
     "glob": "~3.x",
     "string": "~1.x"
   }
