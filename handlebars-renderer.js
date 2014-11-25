@@ -1,12 +1,13 @@
-var when = require('when'),
-  parallel = require('when/parallel'),
-  fs = require('fs'),
+var Promise = require('bluebird'),
+  fs = Promise.promisifyAll(require('fs')),
   Handlebars = require('handlebars'),
-  S = require('string');
+  S = require('string'),
+  globAsync = Promise.promisify(require('glob'));
+
+
 
 function remove(array, value) {
   var index = array.indexOf(value);
-
   if (index > -1) {
     array.splice(index, 1);
   }
@@ -19,139 +20,121 @@ var Renderer = {
   _waitingPromises: [],
 };
 
+function validateGlobFilter(filter) {
+  return new Promise(function(resolve, reject) {
+    if (typeof filter !== 'string') {
+      reject(new Error('Fitler has to be a string, but is of type "'+(typeof filter)+'"'));
+    } else {
+      resolve(filter);
+    }
+  });
+}
 
-Renderer.loadPartials = function(prefix, filter) {
-  var glob = require("glob");
-  var d = when.defer();
+/**
+ * The waiting list takes care about all promiese that need to be resolved
+ * before rendering can start.
+ */
+Renderer._registerWaitingPromise = function(promise) {
+  this._waitingPromises.push(promise);
   
-  if( arguments.length == 1 ) {
+  promise.then(function() {
+    remove(this._waitingPromises, promise);
+  })
+  .catch(function() {
+    remove(this._waitingPromises, promise);
+  });
+}
+
+Renderer.loadPartials = function(prefix, filter, cb) {
+  if (arguments.length === 1) {
     filter = prefix;
     prefix = "";
   }
-
-  this._waitingPromises.push(d.promise);
-
-  if (typeof filter === 'string') {
-
-    glob(filter, (function(err, helpers) {
-      var partialList = [];
-      helpers.forEach((function(helper) {
-        var match = helper.match(/\/([^\/]*)\.mustache$/);
-        partialList.push(this.loadPartial(helper, S(match[1]).camelize().s,prefix));
-      }).bind(this));
-
-      when.all(partialList).then(function() {
-        d.resolve();
-      });
-
-    }).bind(this));
-
-  }
-
-  when(d.promise).then((function() {
-    remove(this._waitingPromises, d.promise);
-  }).bind(this));
-
+  
+  var promise = validateGlobFilter(filter)
+  .then(globAsync)
+  .bind(this)
+  .each(function(helper) {
+    var match = helper.match(/\/([^\/]*)\.mustache$/);
+    return this.loadPartial(helper, S(match[1]).camelize().s, prefix); 
+  });
+ 
+  //we need to wait untill all partials are loaded
+  this._registerWaitingPromise(promise);
 };
 
 
 Renderer.loadPartial = function(path, name, prefix) {
-  //TODO check if partial is already loaded
-  var d = when.defer();
-  fs.readFile(path, function(err, data) {
-    if (err) throw err;
+  return fs.readFileAsync(path)
+  .then(function(data) {
     Handlebars.registerPartial(prefix + name, String(data));
-    d.resolve();
   });
-
-  return d.promise;
 };
 
 
 Renderer.loadHelpers = function(filter) {
-  var glob = require("glob");
-  var d = when.defer();
-
-  this._waitingPromises.push(d.promise);
-
-  if (typeof filter === 'string') {
-
-    glob(filter, (function(err, helpers) {
-      var helpersList = [];
-      helpers.forEach((function(helper) {
-        var match = helper.match(/\/([^\/]*)\.js$/);
-        this.loadHelper(helper, S(match[1]).camelize().s);
-      }).bind(this));
-
-      d.resolve();
-
-    }).bind(this));
-
-  }
-
-  when(d.promise).then((function() {
-    remove(this._waitingPromises, d.promise);
-  }).bind(this));
+  
+  var promise = validateGlobFilter(filter)
+  .then(globAsync)
+  .bind(this)
+  .each(function(helper) {
+    var match = helper.match(/\/([^\/]*)\.js$/);
+    return this.loadHelper(helper, S(match[1]).camelize().s);
+  });
+  
+  //we need to wait until all helpers are loaded
+  this._registerWaitingPromise(promise);
 };
 
 Renderer.loadHelper = function(path, name) {
-
-  if (this.loadedHelpers[name]) {
-    if (this.loadedHelpers[name] !== path) {
-      console.warn(name + " overweitten by: " + path);
-    };
-  } else {
-    this.loadedHelpers[name] = path;
-    Handlebars.registerHelper(name, require(path));
-    //console.log(name + ' ' + path);
-  }
+  return new Promise((function(resolve, reject) {
+    try {
+      if (this.loadedHelpers[name]) {
+        if (this.loadedHelpers[name] !== path) {
+          console.warn(name + " overwritten by: " + path);
+        };
+      } else {
+        this.loadedHelpers[name] = path;
+        Handlebars.registerHelper(name, require(path));
+      }
+      resolve();
+    } catch (e) {
+      reject(e);
+    }
+  }).bind(this));
 }
 
 //TODO cache templates (with sopport to clear templates)
-
 function getTemplates(tpls) {
-  var d = when.defer();
-
-  var keys = [];
-  var loadList = [];
-
-  for (var name in tpls) {
-    if (tpls.hasOwnProperty(name)) {
-      keys.push(name);
-      loadList.push(getTemplate(tpls[name]));
-    }
-  }
-
-  when.all(loadList)
-    .then(function(result) {
-      var list = {};
-      result.forEach(function(value, idx) {
-        list[keys[idx]] = value;
-      });
-      d.resolve(list);
+  var keys = Object.keys(tpls),
+      loadList = [];
+  
+  return Promise.resolve(keys)
+  .map(function(name) {
+    return getTemplate(tpls[name]);
+  })
+  .then(function(result) {
+    var list = {};
+    
+    result.forEach(function(value, idx) {
+      list[keys[idx]] = value;
     });
-
-  return d.promise;
+    
+    return list;
+  });
 }
 
 
 function getTemplate(path) {
-  var d = when.defer();
-
-  fs.readFile(path,
-
-    function(err, data) {
-      if (err) throw err;
-      var template = Handlebars.compile(String(data));
-      d.resolve(template);
-    });
-
-  return d.promise;
+  return fs.readFileAsync(path)
+  .then(function(data) {
+    return Handlebars.compile(String(data));
+  });
 }
 
 
 Renderer.setup = function(options) {
-  console.warn('Deprecated: handlebars-renderer.setup() not required anymore');
+  console.warn('deprecated: handlebars-renderer.setup() not required anymore');
 };
 
 //load default helpers
@@ -163,20 +146,22 @@ Renderer.__express = function(path, opt, cb) {
     content: path
   });
 
+  //TODO what why the slice(0) whats the purpose of this?????
   var promises = Renderer._waitingPromises.slice(0);
+  
+  //TODO what is done here we wait or the tempaltes but still what is going on here???
   promises.unshift(pTemplates);
 
-  when.all(promises).then(function(tpls) {
-    tpls = tpls[0];
-    try {
-      opt.bodyContent = new Handlebars.SafeString(tpls.content(opt));
-
-      var complete = tpls.layout(opt);
-      cb(null, complete);
-    } catch (e) {
-      cb(e);
-    }
-  });
+  Promise.all(promises)
+  .get(0)
+  .then(function(tpls) {
+    opt.bodyContent = new Handlebars.SafeString(tpls.content(opt));
+    cb(null, tpls.layout(opt));
+  })
+  .catch(function(e) {
+    cb(e);
+  })
+  .done();
 };
 
 module.exports = Renderer;

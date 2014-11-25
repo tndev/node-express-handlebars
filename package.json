@@ -21,14 +21,17 @@
       "url": "http://www.opensource.org/licenses/mit-license.php"
     }
   ],
-  "private": true,
+  "private": false,
   "bugs": {
     "url": "https://github.com/tndev/node-express-handlebars/issues"
   },
+  "devDependencies": {
+    "express": "~4.x"
+  },
   "dependencies": {
+    "bluebird": "^2.x.x",
     "handlebars": "~2.x",
-    "when": "~3.x",
-    "glob": "~3.x",
-    "string": "~1.x"
+    "glob": "~4.x",
+    "string": "~2.x"
   }
 }
