@@ -126,10 +126,15 @@ function getTemplates(tpls) {
 
 
 function getTemplate(path) {
-  return fs.readFileAsync(path)
-  .then(function(data) {
-    return Handlebars.compile(String(data));
-  });
+  if (path instanceof Template) {
+    var template = Handlebars.compile(String(path.string));
+    return Promise.resolve(template);
+  } else {
+    return fs.readFileAsync(path)
+    .then(function(data) {
+      return Handlebars.compile(String(data));
+    })
+  }
 }
 
 
@@ -139,6 +144,13 @@ Renderer.setup = function(options) {
 
 //load default helpers
 Renderer.loadHelpers(__dirname + "/lib/helpers/*.js");
+
+function Template(string) {
+  this.string = string;
+};
+
+
+Renderer.Template = Template;
 
 Renderer.__express = function(path, opt, cb) {
   var pTemplates = getTemplates({
