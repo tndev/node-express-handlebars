@@ -1,6 +1,6 @@
 {
   "name": "express-handlebars",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Handlebars renderer for express",
   "main": "handlebars-renderer.js",
   "scripts": {
