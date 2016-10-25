@@ -1,6 +1,6 @@
 {
   "name": "express-handlebars",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Handlebars renderer for express",
   "main": "handlebars-renderer.js",
   "scripts": {
@@ -26,12 +26,12 @@
     "url": "https://github.com/tndev/node-express-handlebars/issues"
   },
   "devDependencies": {
-    "express": "~4.13.3"
+    "express": "~4.14.0"
   },
   "dependencies": {
-    "bluebird": "^2.10.2",
-    "handlebars": "~4.0.3",
-    "glob": "~5.0.15",
-    "string": "~3.3.1"
+    "bluebird": "^3.4.6",
+    "handlebars": "~4.0.5",
+    "glob": "~7.1.1",
+    "string": "~3.3.3"
   }
 }
